@@ -1,0 +1,20 @@
+{
+  "name": "e-library",
+  "version": "1.0.0",
+  "description": "This is a backend REST API for managing records of an electronic library (eLibrary). Authorized users can check out books if they exist in a given eLibrary\"",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samadurm/e-library.git"
+  },
+  "author": "Micah Samaduroff",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/samadurm/e-library/issues"
+  },
+  "homepage": "https://github.com/samadurm/e-library#readme"
+}
