@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/samadurm/e-library/issues"
   },
-  "homepage": "https://github.com/samadurm/e-library#readme"
+  "homepage": "https://github.com/samadurm/e-library#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
