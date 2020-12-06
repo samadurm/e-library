@@ -232,7 +232,14 @@ router
 .put('/:library_id', (req, res) => {
     const err_msg = {"Error":  "The request object is either missing an attribute or contains an invalid attribute."};
     
-    if (is_undefined(req.body) || is_undefined(req.body.name) || is_undefined(req.body.city) || is_undefined(req.body.isPublic)) {
+    res.set("Content", "application/json");
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else if(req.get('content-type') !== 'application/json'){
+        res.status(415).send(json_content_err);
+    } else if (is_undefined(req.body) || is_undefined(req.body.name) || is_undefined(req.body.city) || is_undefined(req.body.isPublic)) {
         res.status(400).send(err_msg);
     } else {
         var isValid = true;
