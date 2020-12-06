@@ -142,7 +142,12 @@ router
     }
 })
 .get('/', (req, res) => {
-    get_libraries(req)
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else {
+        get_libraries(req)
         .then((entities) => {
             entities.libraries.forEach((library) => {
                 library.self = req.protocol + '://' + req.get('Host') + '/libraries/' + library.id;
@@ -153,9 +158,16 @@ router
             console.log(`get /libraries caught ${err}`); 
             res.status(500).send(server_err);
         });
+    }
 })
 .get('/:library_id', (req, res) => {
-    get_library(req.params.library_id)
+
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else {
+        get_library(req.params.library_id)
         .then((library) => {
             library.self = req.protocol + '://' + req.get('Host') + '/libraries/' + library.id;
             res.status(200).send(library);
@@ -163,6 +175,7 @@ router
         .catch((err) => {
             res.status(404).send({"Error": "No library with this library_id exists"});
         });
+    }
 })
 .patch('/:library_id', (req, res) => {
     const err_msg = {"Error":  "The request object is either missing either all of the attributes or contains an invalid attribute."};
