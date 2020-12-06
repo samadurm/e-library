@@ -5,7 +5,9 @@ const path = require('path');
 const session = require('express-session');
 const jwt = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
-const datastore = new Datastore();
+const ds = require('./datastore');
+
+const datastore = ds.datastore;
 
 const fs = require('fs');
 var app = express();
@@ -22,23 +24,18 @@ const app_url = 'http://localhost:8080/';
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
 const scope = 'https://www.googleapis.com/auth/userinfo.profile';
-const DOMAIN = '';
+const PROJECT = 'samadurm-elibrary';
 const USERS = 'USERS';
-
-function fromDatastore(item){
-    item.id = item[Datastore.KEY].id;
-    return item;
-}
 
 const checkJwt = jwt({
     secret: jwksRsa.expressJwtSecret({
             cache: true,
             rateLimit: true,
             jwksRequestsPerMinute: 5,
-            jwksUri: `https://${DOMAIN}/.well-known/jwks.json`
+            jwksUri: `https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com`
         }),
         // Validate the audience and the issuer.
-        issuer: `https://${DOMAIN}/`,
+        issuer: `https://securetoken.google.com/${PROJECT}`,
         algorithms: ['RS256']
 });
 
@@ -96,7 +93,7 @@ app.use(express.static('public'));
 
 app.use('/', express.static('public/html/'));
 app.use('/', express.static('public/css/'));
-
+app.use('/', require('./index'));
 const response_type = "code";
 
 app.get('/verification', (req, res) => {
@@ -163,11 +160,7 @@ app.get("/profile", (req, res) => {
     // );
 })
 
-usersRoute.post('/', (req, res) => {
-    console.log('Got here in post request!!!');
-})
 
-app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
