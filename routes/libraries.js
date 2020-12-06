@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const router = express.Router();
 const ds = require('./../datastore');
-const e = require('express');
 
 const LIBRARIES = 'LIBRARIES';
 const server_err = {"Error": "Internal Server Error"};
