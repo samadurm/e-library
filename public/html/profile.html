@@ -7,7 +7,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>eLibrary</title>
+        <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="main.css">
@@ -19,19 +19,13 @@
         <div class="center-col"> 
             <div class="center">
                 <h1>
-                    Welcome to e-Library.
+                    Welcome to e-Library <%= firstName =%>.
                 </h1>
-                <p>
-                    e-Library is a platform for checking out books from online libraries. Simply sign in with your Google account to get your JWT key and get started.
-                </p>
-                <button onclick="open_win()">Sign in</button>
+                <p>Profile Info: </p>
+                <p>Name: <%= firstName =%> <%= lastName =%> </p>
+                <p>JWT Token: <%= JWT =%></p>
             </div>
         </div>
         <script src="" async defer></script>
-        <script>
-            function open_win() {
-                 window.open("/verification")
-            }
-      </script>
     </body>
 </html>
