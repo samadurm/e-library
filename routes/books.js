@@ -215,7 +215,34 @@ router
     }
 })
 .put('/:book_id', (req, res) => {
-    res.send("Got here in PUT books route");
+    const err_msg = {"Error": "The request object is either missing an attribute or contains an invalid attribute."};
+    
+    res.set("Content", "application/json");
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else if(req.get('content-type') !== 'application/json'){
+        res.status(415).send(json_content_err);
+    } else if (is_undefined(req.body) || is_undefined(req.body.title) || is_undefined(req.body.author) || is_undefined(req.body.genre)) {
+        res.status(400).send(err_msg);
+    } else {
+        get_book(req.params.book_id)
+            .then((book) => {
+                edit_book(book, req.body.title, req.body.author, req.body.genre)
+                    .then((updated) => {
+                        updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
+                        res.status(200).send(updated);
+                    })
+                    .catch((err) => {
+                        res.status(500).send(server_err);
+                    });
+            })
+            .catch((err) => {
+                console.log(`${err}`);
+                res.status(404).send({"Error": "No book with this book_id exists"});
+            });
+    }
 })
 .delete('/:book_id', (req, res) => {
     res.send("Got here in delete book route");
