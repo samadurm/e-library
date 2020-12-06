@@ -78,6 +78,29 @@ function get_books(req) {
         .catch((err) => { console.log(`Caught error in get_books: ${err}`); throw err; });
 }
 
+function edit_book(book, title, author, genre) {
+    const key = ds.datastore.key([BOOKS, parseInt(book.id, 10)]);
+
+    if (!is_undefined(title)) {
+        book.title = title;
+    }
+
+    if (!is_undefined(author)) {
+        book.author = author;
+    }
+
+    if (!is_undefined(genre)) {
+        book.genre = genre;
+    }
+
+    return ds.datastore.save({"key": key, "data": book})
+        .then(() => {
+            book.id = key.id;
+            return book;
+        }) 
+        .catch((err) => { console.log(`edit_book caught ${err}`); throw err; });
+}
+
 router
 .post('/', (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
@@ -141,7 +164,55 @@ router
     }
 })
 .patch('/:book_id', (req, res) => {
-    res.send("Got here in PATCH books route");
+    const err_msg = {"Error":  "The request object is either missing either all of the attributes or contains an invalid attribute."};
+    
+    res.set("Content", "application/json");
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else if(req.get('content-type') !== 'application/json'){
+        res.status(415).send(json_content_err);
+    } else if (is_undefined(req.body) || is_undefined(req.body.title) && is_undefined(req.body.author) && is_undefined(req.body.genre)) {
+        res.status(400).send(err_msg);
+    } else {
+        var isValid = true;
+        // now make sure that defined parameters are valid:
+        if (!is_undefined(req.body.name)) {
+            if (!is_valid_string(req.body.title, 255)) {
+                isValid = false;
+            }
+        }
+        if (!is_undefined(req.body.city)) {
+            if (!is_valid_string(req.body.author, 255)) {
+                isValid = false;
+            }
+        }
+        if (!is_undefined(req.body.author)) {
+            if (!is_valid_string(req.body.author, 255)) {
+                isValid = false;
+            }
+        }
+        if (!isValid){
+            res.status(400).send(err_msg);
+        } else {
+            get_book(req.params.book_id)
+                .then((book) => {
+                    edit_book(book, req.body.title, req.body.author, req.body.genre)
+                        .then((updated) => {
+                            updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
+                            res.status(200).send(updated);
+                        })
+                        .catch((err) => {
+                            res.status(500).send(server_err);
+                        });
+                })
+                .catch((err) => {
+                    console.log(`${err}`);
+                    res.status(404).send({"Error": "No book with this book_id exists"});
+                });
+        }
+    }
 })
 .put('/:book_id', (req, res) => {
     res.send("Got here in PUT books route");
