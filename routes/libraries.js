@@ -3,10 +3,13 @@ const bodyParser = require('body-parser');
 const router = express.Router();
 const ds = require('./../datastore');
 
+const LIBRARIES = 'LIBRARIES';
 
 router
 .post('/', (req, res) => {
-    res.send("Got here in post request");
+    // if (req.body.name) {
+
+    // }
 })
 .get('/', (req, res) => {
     res.send("Got here in get / request");

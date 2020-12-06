@@ -56,7 +56,7 @@ function get_users() {
     const q = datastore.createQuery(USERS);
     return datastore.runQuery(q)
         .then((entities) => {
-            return entities[0].map(fromDatastore);
+            return entities[0].map(ds.fromDatastore);
         })
         .catch((err) => { console.log(`Error caught is get_users: ${err}`); throw err; });
 }
