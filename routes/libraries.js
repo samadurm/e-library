@@ -259,6 +259,12 @@ router
             console.log(err); 
             res.status(404).send({"Error": "No library with this library_id exists."});
         });
+})
+.put('/:library_id/books/:book_id', (req, res) => {
+    res.send("Must implement adding a book to a library!");
+})
+.delete('/:library_id/books/:book_id', (req, res) => {
+    res.send("Must implement removing a book from a library.");
 });
 
 module.exports = router;
