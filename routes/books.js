@@ -42,6 +42,23 @@ function add_book(title, author, genre) {
         .catch((err) => { console.log(`Error in add_book: ${err}`); throw err; });
 }
 
+function get_book(book_id) {
+    const key = ds.datastore.key([BOOKS, parseInt(book_id, 10)]);
+    
+    return ds.datastore.get(key)
+        .then((entity) => {
+            if (entity === undefined) {
+                console.log("Entity is undefined");
+                throw Error('No book with that id found.');
+            } else {
+                var book = entity[0]; 
+                book.id = key.id;
+                return book;
+            }
+        })
+        .catch((err) => { throw err; });
+}
+
 router
 .post('/', (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
@@ -69,7 +86,22 @@ router
     }
 })
 .get('/:book_id', (req, res) => {
-    res.send("Got here in Books GET by id route");
+    
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else {
+        get_book(req.params.book_id)
+            .then((book) => {
+                book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
+                res.status(200).send(book);
+            })
+            .catch((err) => {
+                console.log(`get /book_id caught: ${err}`);
+                res.status(404).send({"Error": "No book with this book_id exists"});
+            });
+    }
 })
 .get('/', (req, res) => {
     res.send("Got here in GET all books route");
