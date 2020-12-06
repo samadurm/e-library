@@ -1,23 +1,46 @@
-const express = require('express');
-const session = require('express-session');
 const axios = require('axios');
+const {Datastore} = require('@google-cloud/datastore');
+const express = require('express');
 const path = require('path');
-
+const session = require('express-session');
+const jwt = require('express-jwt');
+const jwksRsa = require('jwks-rsa');
+const datastore = new Datastore();
 
 const fs = require('fs');
 var app = express();
+var usersRoute = express();
 app.engine('html', require('ejs').renderFile);
 
 var client_id = null;
 var client_secret = null;
-var jwt = null;
+var jwt_token = null;
 
 // const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
 const app_url = 'http://localhost:8080/';
 
-const auth_url = "https://accounts.google.com/o/oauth2/v2/auth";
+const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
-const scope = "https://www.googleapis.com/auth/userinfo.profile";
+const scope = 'https://www.googleapis.com/auth/userinfo.profile';
+const DOMAIN = '';
+const USERS = 'USERS';
+
+function fromDatastore(item){
+    item.id = item[Datastore.KEY].id;
+    return item;
+}
+
+const checkJwt = jwt({
+    secret: jwksRsa.expressJwtSecret({
+            cache: true,
+            rateLimit: true,
+            jwksRequestsPerMinute: 5,
+            jwksUri: `https://${DOMAIN}/.well-known/jwks.json`
+        }),
+        // Validate the audience and the issuer.
+        issuer: `https://${DOMAIN}/`,
+        algorithms: ['RS256']
+});
 
 // can change this to whatever the file is that contains the client secret
 const secret_file = 'client_secret.json'; 
@@ -32,6 +55,42 @@ fs.readFile(secret_file, 'utf8', (err, data) => {
     }
 });
 
+function get_users() {
+    const q = datastore.createQuery(USERS);
+    return datastore.runQuery(q)
+        .then((entities) => {
+            return entities[0].map(fromDatastore);
+        })
+        .catch((err) => { console.log(`Error caught is get_users: ${err}`); throw err; });
+}
+
+function add_user(user_data) {
+    user_data.books = [];
+    var key = datastore.key(USERS);
+
+    return datastore.save({"key": key, "data": user_data})
+        .then(() => { return key; })
+        .catch((err) => { console.log(err); throw err; });
+}
+
+function check_user(user_data) {
+    return get_users()
+        .then((users) => {
+            if (users.length > 0) {
+                for (const user of users) {
+                    if (user.unique_id === user_data.unique_id) {
+                        return;
+                    }
+                }
+            } 
+            // if we got here then the user was not found in the database
+            // so add the user
+            add_user(user_data)
+                .then(() => { console.log('New user added.'); return; })
+                .catch((err) => { console.log(err); throw err; })
+        })
+        .catch((err) => { console.log('get_user caught error ' + err); throw err; });
+}
 
 app.use(express.static('public'));
 
@@ -60,17 +119,30 @@ app.get('/oauth', (req, res) => {
             "redirect_uri": redirect_uri,
             "grant_type": "authorization_code"
         };
-        axios.post("https://www.googleapis.com/oauth2/v4/token", data) 
+        axios.post('https://www.googleapis.com/oauth2/v4/token', data) 
             .then((entity) => { 
-                var url = "https://people.googleapis.com/v1/people/me?personFields=names";
-                url += "&access_token=" + entity.data.access_token;
-                jwt = entity.data.id_token;
+               var url = 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses';
+
+                url += '&access_token=' + entity.data.access_token;
+                jwt_token = entity.data.id_token;
 
                 axios.get(url)
                     .then((entity) => { 
-                        var firstName = entity.data.names[0].givenName;
-                        var lastName = entity.data.names[0].familyName;
-                        res.redirect("/profile?firstName=" + firstName + "&lastName=" + lastName + "&state=" + session.state);
+                        var first_name = entity.data.names[0].givenName;
+                        var last_name = entity.data.names[0].familyName;
+                        // console.log(entity.data);
+
+                        const user_data = {
+                            "unque_id": 'sub_value123',
+                            "first_name": first_name,
+                            "last_name": last_name,
+                            "email": null,
+                        }
+                        check_user(user_data)
+                            .then((user) => {
+                                res.redirect("/profile?first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
+                            })
+                            .catch((err) => { throw err; });
                     })
                     .catch((err) => {console.log(err); throw err; });
             })
@@ -80,17 +152,22 @@ app.get('/oauth', (req, res) => {
     }   
 })
 app.get("/profile", (req, res) => {
-    const firstName = req.query.firstName;
-    const lastName = req.query.lastName;
+    const first_name = req.query.first_name;
+    const last_name = req.query.last_name;
     // uses ejs html engine to set the parameters of the html file
     const profile_path = path.join(__dirname, "public/html", "profile.html");
 
-    res.send(`Name: ${firstName} ${lastName} JWT ${jwt}`);
+    res.send(`Name: ${first_name} ${last_name} JWT ${jwt_token}`);
     // res.render(
     //     profile_path, 
     // );
 })
 
+usersRoute.post('/', (req, res) => {
+    console.log('Got here in post request!!!');
+})
+
+app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

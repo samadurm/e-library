@@ -18,9 +18,13 @@
   },
   "homepage": "https://github.com/samadurm/e-library#readme",
   "dependencies": {
+    "@google-cloud/datastore": "^6.3.1",
     "axios": "^0.21.0",
+    "datastore": "^1.8.2",
     "ejs": "^3.1.5",
     "express": "^4.17.1",
-    "express-session": "^1.17.1"
+    "express-jwt": "^6.0.0",
+    "express-session": "^1.17.1",
+    "jwks-rsa": "^1.11.0"
   }
 }
