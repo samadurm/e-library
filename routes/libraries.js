@@ -43,6 +43,11 @@ function add_library(name, city, isPublic) {
         .catch((err) => { console.log(`Error caught in add_library: ${err}`); throw err; });
 }
 
+function remove_books_from_library(library) {
+    console.log('Must implement removing books from a library!');
+}
+
+
 function get_library(library_id) {
 
     const key = ds.datastore.key([LIBRARIES, parseInt(library_id, 10)]);
@@ -99,6 +104,13 @@ function edit_library(library, name, city, isPublic) {
             return library;
         })
         .catch((err) => { console.log(`edit_library caught ${err}`); throw err; });
+}
+
+function delete_library(library_id) {
+    const key = ds.datastore.key([LIBRARIES, parseInt(library_id, 10)]);
+    return ds.datastore.delete(key)
+        .then(() => { return; })
+        .catch((err) => { throw err; });
 }
 
 router
@@ -231,7 +243,22 @@ router
     }
 })
 .delete('/:library_id', (req, res) => {
-    res.send("Got here in delete library")
+    get_library(req.params.library_id)
+        .then((library) => {
+            remove_books_from_library(library);
+            delete_library(req.params.library_id)
+                .then(() => {
+                    res.status(204).end();
+                })
+                .catch((err) => {
+                    console.log(`delete_library caught ${err}`);
+                    res.status(500).send(server_err);
+                })
+        })
+        .catch((err) => { 
+            console.log(err); 
+            res.status(404).send({"Error": "No library with this library_id exists."});
+        });
 });
 
 module.exports = router;
