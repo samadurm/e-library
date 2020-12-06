@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const router = express.Router();
 const ds = require('./../datastore');
+const e = require('express');
 
 const LIBRARIES = 'LIBRARIES';
 const server_err = {"Error": "Internal Server Error"};
@@ -59,6 +60,25 @@ function get_library(library_id) {
         .catch((err) => { throw err; });
 }
 
+function get_libraries(req) {
+    var q = ds.datastore.createQuery(LIBRARIES).limit(5);
+
+    if (Object.keys(req.query).includes("cursor")) {
+        q = q.start(req.query.cursor);
+    }
+
+    return ds.datastore.runQuery(q)
+        .then((entities) => {
+            var results = {};
+            results.libraries = entities[0].map(ds.fromDatastore);
+            if (entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS) {
+                results.next = req.protocol + "://" + req.get("Host") + req.baseUrl + "?cursor=" + entities[1].endCursor;
+            }
+            return results;
+        })
+        .catch((err) => { console.log(`Caught error in get_libraries: ${err}`); throw err; });
+}
+
 router
 .post("/", (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
@@ -80,7 +100,17 @@ router
     }
 })
 .get('/', (req, res) => {
-    res.send("Got here in get / request");
+    get_libraries(req)
+        .then((entities) => {
+            entities.libraries.forEach((library) => {
+                library.self = req.protocol + '://' + req.get('Host') + '/libraries/' + library.id;
+            });
+            res.status(200).send(entities);
+        })
+        .catch((err) => { 
+            console.log(`get /libraries caught ${err}`); 
+            res.status(500).send(server_err);
+        });
 })
 .get('/:library_id', (req, res) => {
     get_library(req.params.library_id)
@@ -89,7 +119,6 @@ router
             res.status(200).send(library);
         })
         .catch((err) => {
-            console.log("caught error");
             res.status(404).send({"Error": "No library with this library_id exists"});
         });
 })
