@@ -59,6 +59,25 @@ function get_book(book_id) {
         .catch((err) => { throw err; });
 }
 
+function get_books(req) {
+    var q = ds.datastore.createQuery(BOOKS).limit(5);
+
+    if (Object.keys(req.query).includes("cursor")) {
+        q = q.start(req.query.cursor);
+    }
+
+    return ds.datastore.runQuery(q)
+        .then((entities) => {
+            var results = {};
+            results.books = entities[0].map(ds.fromDatastore);
+            if (entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS) {
+                results.next = req.protocol + "://" + req.get("Host") + req.baseUrl + "?cursor=" + entities[1].endCursor;
+            }
+            return results;
+        })
+        .catch((err) => { console.log(`Caught error in get_books: ${err}`); throw err; });
+}
+
 router
 .post('/', (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
@@ -104,7 +123,22 @@ router
     }
 })
 .get('/', (req, res) => {
-    res.send("Got here in GET all books route");
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else {
+        get_books(req)
+            .then((entities) => {
+                entities.books.forEach((book) => {
+                    book.self = req.protocol + '://' + req.get('Host') + '/libraries/' + book.id;
+                });
+                res.status(200).send(entities);
+            })
+            .catch((err) => {
+                res.status(500).send(server_err);
+            });
+    }
 })
 .patch('/:book_id', (req, res) => {
     res.send("Got here in PATCH books route");
