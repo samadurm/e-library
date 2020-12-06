@@ -6,6 +6,8 @@ const e = require('express');
 
 const LIBRARIES = 'LIBRARIES';
 const server_err = {"Error": "Internal Server Error"};
+const json_accept_err = {"Error": "Must accept JSON format."};
+const json_content_err = {"Error": "Content must be in JSON format."};
 
 router.use(bodyParser.json());
 
@@ -116,8 +118,14 @@ function delete_library(library_id) {
 router
 .post("/", (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
+    const accepts = req.accepts(['application/json']);
+    res.set("Content", "application/json");
 
-    if (is_undefined(req.body) || is_undefined(req.body.name) || is_undefined(req.body.city) || is_undefined(req.body.isPublic)) {
+    if (!accepts) {
+        res.status(406).send(json_accept_err);
+    } else if (req.get('content-type') !== 'application/json') {
+        res.status(415).send(json_content_err);
+    } else if (is_undefined(req.body) || is_undefined(req.body.name) || is_undefined(req.body.city) || is_undefined(req.body.isPublic)) {
         res.status(400).send(err_response);
     } else if (!is_valid_string(req.body.name, 255) || !is_valid_string(req.body.city, 255) || !is_bool(req.body.isPublic)) {
         res.status(400).send(err_response);
