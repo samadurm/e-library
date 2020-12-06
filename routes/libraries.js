@@ -42,6 +42,23 @@ function add_library(name, city, isPublic) {
         .catch((err) => { console.log(`Error caught in add_library: ${err}`); throw err; });
 }
 
+function get_library(library_id) {
+
+    const key = ds.datastore.key([LIBRARIES, parseInt(library_id, 10)]);
+    return ds.datastore.get(key)
+        .then((entity) => {
+            if (entity === undefined) {
+                console.log("Entity is undefined");
+                throw Error('No library with that id found.');
+            } else {
+                var library = entity[0]; 
+                library.id = key.id;
+                return library;
+            }
+        })
+        .catch((err) => { throw err; });
+}
+
 router
 .post("/", (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
@@ -66,7 +83,15 @@ router
     res.send("Got here in get / request");
 })
 .get('/:library_id', (req, res) => {
-    res.send("Got here in get library id");
+    get_library(req.params.library_id)
+        .then((library) => {
+            library.self = req.protocol + '://' + req.get('Host') + '/libraries/' + library.id;
+            res.status(200).send(library);
+        })
+        .catch((err) => {
+            console.log("caught error");
+            res.status(404).send({"Error": "No library with this library_id exists"});
+        });
 })
 .patch('/:library_id', (req, res) => {
     res.send("got here in patch library");
