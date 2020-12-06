@@ -184,13 +184,51 @@ router
                 })
                 .catch((err) => {
                     console.log(`Library not found: ${err}`);
-                    res.status(404).send({"Error": "No library with this library_id exists."});
+                    res.status(404).send({"Error": "No library with this library_id exists"});
                 });
         }
     }
 })
 .put('/:library_id', (req, res) => {
-    res.send("Got here in put library");
+    const err_msg = {"Error":  "The request object is either missing an attribute or contains an invalid attribute."};
+    
+    if (is_undefined(req.body) || is_undefined(req.body.name) || is_undefined(req.body.city) || is_undefined(req.body.isPublic)) {
+        res.status(400).send(err_msg);
+    } else {
+        var isValid = true;
+        // now make sure that defined parameters are valid:
+
+        if (!is_valid_string(req.body.name, 255)) {
+            isValid = false;
+        }
+        if (!is_valid_string(req.body.city, 255)) {
+            isValid = false;
+        }
+        if (!is_bool(req.body.isPublic)) {
+            isValid = false;
+        }
+
+        if (!isValid){
+            res.status(400).send(err_msg);
+        } else {
+            get_library(req.params.library_id)
+                .then((library) => {
+                    edit_library(library, req.body.name, req.body.city, req.body.isPublic)
+                        .then((updated) => {
+                            updated.self = req.protocol + '://' + req.get('Host') + '/libraries/' + library.id;
+                            res.status(200).send(updated);
+                        })
+                        .catch((err) => { 
+                            console.log(err); 
+                            res.status(500).send(server_err);
+                        });
+                })
+                .catch((err) => {
+                    console.log(`Library not found: ${err}`);
+                    res.status(404).send({"Error": "No library with this library_id exists."});
+                });
+        }
+    }
 })
 .delete('/:library_id', (req, res) => {
     res.send("Got here in delete library")
