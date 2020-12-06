@@ -79,6 +79,28 @@ function get_libraries(req) {
         .catch((err) => { console.log(`Caught error in get_libraries: ${err}`); throw err; });
 }
 
+function edit_library(library, name, city, isPublic) {
+    
+    const key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
+
+    if (!is_undefined(name)) {
+        library.name = name;
+    }
+    if (!is_undefined(city)) {
+        library.city = city;
+    }
+    if (!is_undefined(isPublic)) {
+        library.isPublic = isPublic;
+    }
+
+    return ds.datastore.save({"key": key, "data": library})
+        .then(() => {
+            library.id = key.id;
+            return library;
+        })
+        .catch((err) => { console.log(`edit_library caught ${err}`); throw err; });
+}
+
 router
 .post("/", (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
@@ -123,7 +145,49 @@ router
         });
 })
 .patch('/:library_id', (req, res) => {
-    res.send("got here in patch library");
+    const err_msg = {"Error":  "The request object is either missing either all of the attributes or contains an invalid attribute."};
+    
+    if (is_undefined(req.body) || is_undefined(req.body.name) && is_undefined(req.body.city) && is_undefined(req.body.isPublic)) {
+        res.status(400).send(err_msg);
+    } else {
+        var isValid = true;
+        // now make sure that defined parameters are valid:
+        if (!is_undefined(req.body.name)) {
+            if (!is_valid_string(req.body.name, 255)) {
+                isValid = false;
+            }
+        }
+        if (!is_undefined(req.body.city)) {
+            if (!is_valid_string(req.body.city, 255)) {
+                isValid = false;
+            }
+        }
+        if (!is_undefined(req.body.isPublic)) {
+            if (!is_bool(req.body.isPublic)) {
+                isValid = false;
+            }
+        }
+        if (!isValid){
+            res.status(400).send(err_msg);
+        } else {
+            get_library(req.params.library_id)
+                .then((library) => {
+                    edit_library(library, req.body.name, req.body.city, req.body.isPublic)
+                        .then((updated) => {
+                            updated.self = req.protocol + '://' + req.get('Host') + '/libraries/' + library.id;
+                            res.status(200).send(updated);
+                        })
+                        .catch((err) => { 
+                            console.log(err); 
+                            res.status(500).send(server_err);
+                        });
+                })
+                .catch((err) => {
+                    console.log(`Library not found: ${err}`);
+                    res.status(404).send({"Error": "No library with this library_id exists."});
+                });
+        }
+    }
 })
 .put('/:library_id', (req, res) => {
     res.send("Got here in put library");
