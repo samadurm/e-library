@@ -63,11 +63,6 @@ function add_library(name, city, isPublic) {
         .catch((err) => { console.log(`Error caught in add_library: ${err}`); throw err; });
 }
 
-function remove_books_from_library(library) {
-    console.log('Must implement removing books from a library!');
-}
-
-
 function get_library(library_id) {
 
     const key = ds.datastore.key([LIBRARIES, parseInt(library_id, 10)]);
@@ -126,8 +121,23 @@ function edit_library(library, name, city, isPublic) {
         .catch((err) => { console.log(`edit_library caught ${err}`); throw err; });
 }
 
-function delete_library(library_id) {
-    const key = ds.datastore.key([LIBRARIES, parseInt(library_id, 10)]);
+function delete_library(library) {
+    const key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
+
+    library.books.forEach((book_id) => {
+        get_book(book_id)
+            .then((book) => {
+                book.library = null;
+                var book_key = ds.datastore.key([BOOKS, parseInt(book.id, 10)]);  
+                return ds.datastore.save({"key": book_key, "data": book});      
+            })
+            .catch((err) => {
+                console.log(`Caught error in delete_library: ${err}`);
+                throw err;
+            });
+
+    });
+
     return ds.datastore.delete(key)
         .then(() => { return; })
         .catch((err) => { throw err; });
@@ -365,8 +375,7 @@ router
 .delete('/:library_id', (req, res) => {
     get_library(req.params.library_id)
         .then((library) => {
-            remove_books_from_library(library);
-            delete_library(req.params.library_id)
+            delete_library(library)
                 .then(() => {
                     res.status(204).end();
                 })
