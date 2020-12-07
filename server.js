@@ -3,8 +3,6 @@ const {Datastore} = require('@google-cloud/datastore');
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const jwt = require('express-jwt');
-const jwksRsa = require('jwks-rsa');
 const ds = require('./datastore');
 
 const datastore = ds.datastore;
@@ -23,21 +21,9 @@ const app_url = 'http://localhost:8080/';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
-const scope = 'https://www.googleapis.com/auth/userinfo.profile';
-const PROJECT = 'samadurm-elibrary';
+const scope = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const USERS = 'USERS';
 
-const checkJwt = jwt({
-    secret: jwksRsa.expressJwtSecret({
-            cache: true,
-            rateLimit: true,
-            jwksRequestsPerMinute: 5,
-            jwksUri: `https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com`
-        }),
-        // Validate the audience and the issuer.
-        issuer: `https://securetoken.google.com/${PROJECT}`,
-        algorithms: ['RS256']
-});
 
 // can change this to whatever the file is that contains the client secret
 const secret_file = 'client_secret.json'; 
@@ -53,9 +39,12 @@ fs.readFile(secret_file, 'utf8', (err, data) => {
 });
 
 function get_users() {
-    const q = datastore.createQuery(USERS);
-    return datastore.runQuery(q)
+    const q = ds.datastore.createQuery(USERS);
+    return ds.datastore.runQuery(q)
         .then((entities) => {
+            // var results = {};
+            // results.users = entities[0].map(ds.fromDatastore);
+            // return results;
             return entities[0].map(ds.fromDatastore);
         })
         .catch((err) => { console.log(`Error caught is get_users: ${err}`); throw err; });
@@ -125,23 +114,24 @@ app.get('/oauth', (req, res) => {
 
                 axios.get(url)
                     .then((entity) => { 
-                        var first_name = entity.data.names[0].givenName;
-                        var last_name = entity.data.names[0].familyName;
-                        // console.log(entity.data);
+                        const first_name = entity.data.names[0].givenName;
+                        const last_name = entity.data.names[0].familyName;
+                        const email = entity.data.emailAddresses[0].value;
+                        const profile_id = entity.data.names[0].metadata.source.id;
 
                         const user_data = {
-                            "unque_id": 'sub_value123',
+                            "unique_id": profile_id,
                             "first_name": first_name,
                             "last_name": last_name,
-                            "email": null,
+                            "email": email,
                         }
                         check_user(user_data)
-                            .then((user) => {
-                                res.redirect("/profile?first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
+                            .then(() => {
+                                res.redirect("/profile?unique_id=" + profile_id + "&first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
                             })
                             .catch((err) => { throw err; });
                     })
-                    .catch((err) => {console.log(err); throw err; });
+                    .catch((err) => { console.log(err); throw err; });
             })
             .catch((err) => { 
                 res.status(400).send("Error. Error retrieving oauth token.");
@@ -151,16 +141,37 @@ app.get('/oauth', (req, res) => {
 app.get("/profile", (req, res) => {
     const first_name = req.query.first_name;
     const last_name = req.query.last_name;
+    const unique_id = req.query.unique_id;
     // uses ejs html engine to set the parameters of the html file
     const profile_path = path.join(__dirname, "public/html", "profile.html");
 
-    res.send(`Name: ${first_name} ${last_name} JWT ${jwt_token}`);
+    res.send(`Unique id: ${unique_id} Name: ${first_name} ${last_name} JWT ${jwt_token}`);
     // res.render(
     //     profile_path, 
     // );
+});
+
+usersRoute.get('/', (req, res) => {
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send({"Error": "Must accept JSON format."});
+    } else {
+        get_users()
+        .then((entities) => {
+            entities.forEach((user) => {
+                user.self = req.protocol + '://' + req.get('Host') + '/users/' + user.id;
+            })
+            res.status(200).send(entities);
+        })
+        .catch((err) => {
+            console.log(`Caught error in get users route: ${err}`);
+            res.status(500).send({"Error": "Internal Server Error."})
+        });
+    }
 })
 
-
+app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
