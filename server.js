@@ -53,9 +53,12 @@ fs.readFile(secret_file, 'utf8', (err, data) => {
 });
 
 function get_users() {
-    const q = datastore.createQuery(USERS);
-    return datastore.runQuery(q)
+    const q = ds.datastore.createQuery(USERS);
+    return ds.datastore.runQuery(q)
         .then((entities) => {
+            // var results = {};
+            // results.users = entities[0].map(ds.fromDatastore);
+            // return results;
             return entities[0].map(ds.fromDatastore);
         })
         .catch((err) => { console.log(`Error caught is get_users: ${err}`); throw err; });
@@ -71,6 +74,7 @@ function add_user(user_data) {
 }
 
 function check_user(user_data) {
+    console.log(user_data)
     return get_users()
         .then((users) => {
             if (users.length > 0) {
@@ -159,9 +163,22 @@ app.get("/profile", (req, res) => {
     // res.render(
     //     profile_path, 
     // );
+});
+
+usersRoute.get('/', (req, res) => {
+    get_users()
+        .then((entities) => {
+            entities.forEach((user) => {
+                user.self = req.protocol + '://' + req.get('Host') + '/users/' + user.id;
+            })
+            res.status(200).send(entities);
+        })
+        .catch((err) => {
+
+        });
 })
 
-
+app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
