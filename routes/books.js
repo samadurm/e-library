@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const router = express.Router();
 const ds = require('./../datastore');
+const jwt = require('express-jwt');
+const jwksRsa = require('jwks-rsa');
 
 const BOOKS = 'BOOKS';
 const LIBRARIES = 'LIBRARIES';
@@ -10,6 +12,19 @@ const json_accept_err = {"Error": "Must accept JSON format."};
 const json_content_err = {"Error": "Content must be in JSON format."};
 
 router.use(bodyParser.json());
+
+const PROJECT = 'samadurm-elibrary';
+const checkJwt = jwt({
+    secret: jwksRsa.expressJwtSecret({
+            cache: true,
+            rateLimit: true,
+            jwksRequestsPerMinute: 5,
+            jwksUri: `https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com`
+        }),
+        // Validate the audience and the issuer.
+        issuer: `https://securetoken.google.com/${PROJECT}`,
+        algorithms: ['RS256']
+});
 
 function is_undefined(data) {
     return data === undefined ? true : false;
@@ -84,7 +99,7 @@ function add_book(title, author, genre) {
         "author": author,
         "genre": genre,
         "library": null,
-        "rented_by": null
+        "owner": null
     };
 
     return ds.datastore.save({"key": key, "data": book})
@@ -307,7 +322,7 @@ router
 .delete('/:book_id', (req, res) => {
     get_book(req.params.book_id)
         .then((book) => {
-            if (book.rented_by !== null) {
+            if (book.owner !== null) {
                 res.status(403).send({"Error": "Cannot delete book as it is rented by a user. Remove the book from the user first."})
             } else {
                 if (book.library !== null) {

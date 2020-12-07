@@ -3,8 +3,6 @@ const {Datastore} = require('@google-cloud/datastore');
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const jwt = require('express-jwt');
-const jwksRsa = require('jwks-rsa');
 const ds = require('./datastore');
 
 const datastore = ds.datastore;
@@ -24,20 +22,8 @@ const app_url = 'http://localhost:8080/';
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
 const scope = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const PROJECT = 'samadurm-elibrary';
 const USERS = 'USERS';
 
-const checkJwt = jwt({
-    secret: jwksRsa.expressJwtSecret({
-            cache: true,
-            rateLimit: true,
-            jwksRequestsPerMinute: 5,
-            jwksUri: `https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com`
-        }),
-        // Validate the audience and the issuer.
-        issuer: `https://securetoken.google.com/${PROJECT}`,
-        algorithms: ['RS256']
-});
 
 // can change this to whatever the file is that contains the client secret
 const secret_file = 'client_secret.json'; 
