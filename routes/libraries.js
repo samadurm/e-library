@@ -170,11 +170,10 @@ function remove_book_from_library(book, library) {
 
     library.books.forEach((lib_book) => {
         if (lib_book !== book.id) {
-            console.log(`${lib_book.id} != ${book.id}`);
             updated_books.push(book.id);
         } 
     });
-    
+
     library.books = updated_books;
 
     const lib_key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
@@ -412,10 +411,7 @@ router
     get_book(req.params.book_id)
         .then((book) => {
             if (book.library !== Number(req.params.library_id)) {
-                console.log(typeof book.library);
-                console.log(typeof req.params.library_id);
-                console.log(`${book.library} !== ${req.params.library_id}`);
-                res.status(403).send({"Error": "No book exists with this book_id at the library with this library_id"});
+                res.status(403).send({"Error": "The book is not assigned to the given library"});
             } else {
                 get_library(req.params.library_id)
                     .then((library) => {
@@ -432,7 +428,6 @@ router
                         console.log(`got error ${err}`);
                         res.status(404).send({"Error": "The specified library and/or book does not exist"});
                     });
-                
                 }
             })
         .catch((err) => {
