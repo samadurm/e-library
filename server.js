@@ -5,6 +5,8 @@ const path = require('path');
 const session = require('express-session');
 const ds = require('./datastore');
 
+const jwt_decode = require('jwt-decode');
+
 const datastore = ds.datastore;
 
 const fs = require('fs');
@@ -24,6 +26,9 @@ const redirect_uri = app_url + 'oauth';
 const scope = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const USERS = 'USERS';
 
+function extract_sub(jwt_token){
+    return jwt_decode(jwt_token).sub;
+}
 
 // can change this to whatever the file is that contains the client secret
 const secret_file = 'client_secret.json'; 
@@ -111,23 +116,23 @@ app.get('/oauth', (req, res) => {
 
                 url += '&access_token=' + entity.data.access_token;
                 jwt_token = entity.data.id_token;
-
+                
                 axios.get(url)
                     .then((entity) => { 
                         const first_name = entity.data.names[0].givenName;
                         const last_name = entity.data.names[0].familyName;
                         const email = entity.data.emailAddresses[0].value;
-                        const profile_id = entity.data.names[0].metadata.source.id;
+                        const sub = extract_sub(jwt_token);
 
                         const user_data = {
-                            "unique_id": profile_id,
+                            "unique_id": sub,
                             "first_name": first_name,
                             "last_name": last_name,
                             "email": email,
                         }
                         check_user(user_data)
                             .then(() => {
-                                res.redirect("/profile?unique_id=" + profile_id + "&first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
+                                res.redirect("/profile?unique_id=" + sub + "&first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
                             })
                             .catch((err) => { throw err; });
                     })
