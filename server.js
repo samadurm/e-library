@@ -74,7 +74,6 @@ function add_user(user_data) {
 }
 
 function check_user(user_data) {
-    console.log(user_data)
     return get_users()
         .then((users) => {
             if (users.length > 0) {
@@ -141,8 +140,8 @@ app.get('/oauth', (req, res) => {
                             "email": email,
                         }
                         check_user(user_data)
-                            .then((user) => {
-                                res.redirect("/profile?first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
+                            .then(() => {
+                                res.redirect("/profile?unique_id=" + profile_id + "&first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
                             })
                             .catch((err) => { throw err; });
                     })
@@ -156,10 +155,11 @@ app.get('/oauth', (req, res) => {
 app.get("/profile", (req, res) => {
     const first_name = req.query.first_name;
     const last_name = req.query.last_name;
+    const unique_id = req.query.unique_id;
     // uses ejs html engine to set the parameters of the html file
     const profile_path = path.join(__dirname, "public/html", "profile.html");
 
-    res.send(`Name: ${first_name} ${last_name} JWT ${jwt_token}`);
+    res.send(`Unique id: ${unique_id} Name: ${first_name} ${last_name} JWT ${jwt_token}`);
     // res.render(
     //     profile_path, 
     // );
