@@ -166,7 +166,12 @@ app.get("/profile", (req, res) => {
 });
 
 usersRoute.get('/', (req, res) => {
-    get_users()
+    const accepts = req.accepts(['application/json']);
+
+    if (!accepts) {
+        res.status(406).send({"Error": "Must accept JSON format."});
+    } else {
+        get_users()
         .then((entities) => {
             entities.forEach((user) => {
                 user.self = req.protocol + '://' + req.get('Host') + '/users/' + user.id;
@@ -174,8 +179,10 @@ usersRoute.get('/', (req, res) => {
             res.status(200).send(entities);
         })
         .catch((err) => {
-
+            console.log(`Caught error in get users route: ${err}`);
+            res.status(500).send({"Error": "Internal Server Error."})
         });
+    }
 })
 
 app.use('/users', usersRoute);
