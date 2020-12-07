@@ -5,6 +5,7 @@ const ds = require('./../datastore');
 const jwt = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 
+
 const BOOKS = 'BOOKS';
 const LIBRARIES = 'LIBRARIES';
 const server_err = {"Error": "Internal Server Error"};
@@ -13,16 +14,15 @@ const json_content_err = {"Error": "Content must be in JSON format."};
 
 router.use(bodyParser.json());
 
-const PROJECT = 'samadurm-elibrary';
 const checkJwt = jwt({
     secret: jwksRsa.expressJwtSecret({
             cache: true,
             rateLimit: true,
             jwksRequestsPerMinute: 5,
-            jwksUri: `https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com`
+            jwksUri: `https://www.googleapis.com/oauth2/v3/certs`
         }),
         // Validate the audience and the issuer.
-        issuer: `https://securetoken.google.com/${PROJECT}`,
+        issuer: `https://accounts.google.com`,
         algorithms: ['RS256']
 });
 
@@ -91,21 +91,21 @@ function remove_book_from_library(book, library) {
     );
 }
 
-function add_book(title, author, genre) {
+function add_book(title, author, genre, sub) {
     var key = ds.datastore.key(BOOKS);
-    
+
     const book = {
         "title": title, 
         "author": author,
         "genre": genre,
         "library": null,
-        "owner": null
+        "owner": sub
     };
 
     return ds.datastore.save({"key": key, "data": book})
         .then(() => {
             book.id = key.id;
-            return book;
+            return book;            
         })
         .catch((err) => { console.log(`Error in add_book: ${err}`); throw err; });
 }
@@ -127,8 +127,8 @@ function get_book(book_id) {
         .catch((err) => { throw err; });
 }
 
-function get_books(req) {
-    var q = ds.datastore.createQuery(BOOKS).limit(5);
+function get_books(req, sub) {
+    var q = ds.datastore.createQuery(BOOKS).limit(5).filter('owner', '=', sub);
 
     if (Object.keys(req.query).includes("cursor")) {
         q = q.start(req.query.cursor);
@@ -177,7 +177,7 @@ function delete_book(book) {
 }
 
 router
-.post('/', (req, res) => {
+.post('/', checkJwt, (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
     const accepts = req.accepts(['application/json']);
     res.set("Content", "application/json");
@@ -191,7 +191,7 @@ router
     } else if (!is_valid_string(req.body.title, 255) || !is_valid_string(req.body.author, 255) || !is_valid_string(req.body.genre, 255)) {
         res.status(400).send(err_response);
     } else {
-        add_book(req.body.title, req.body.author, req.body.genre)
+        add_book(req.body.title, req.body.author, req.body.genre, req.user.sub)
             .then((book) => {
                 book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
                 res.status(201).send(book);
@@ -220,13 +220,13 @@ router
             });
     }
 })
-.get('/', (req, res) => {
+.get('/', checkJwt, (req, res) => {
     const accepts = req.accepts(['application/json']);
 
     if (!accepts) {
         res.status(406).send(json_accept_err);
     } else {
-        get_books(req)
+        get_books(req, req.user.sub)
             .then((entities) => {
                 entities.books.forEach((book) => {
                     book.self = req.protocol + '://' + req.get('Host') + '/libraries/' + book.id;
