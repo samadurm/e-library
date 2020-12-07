@@ -23,7 +23,7 @@ const app_url = 'http://localhost:8080/';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
-const scope = 'https://www.googleapis.com/auth/userinfo.profile';
+const scope = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const PROJECT = 'samadurm-elibrary';
 const USERS = 'USERS';
 
@@ -125,15 +125,16 @@ app.get('/oauth', (req, res) => {
 
                 axios.get(url)
                     .then((entity) => { 
-                        var first_name = entity.data.names[0].givenName;
-                        var last_name = entity.data.names[0].familyName;
-                        // console.log(entity.data);
+                        const first_name = entity.data.names[0].givenName;
+                        const last_name = entity.data.names[0].familyName;
+                        const email = entity.data.emailAddresses[0].value;
+                        const profile_id = entity.data.names[0].metadata.source.id;
 
                         const user_data = {
-                            "unque_id": 'sub_value123',
+                            "unique_id": profile_id,
                             "first_name": first_name,
                             "last_name": last_name,
-                            "email": null,
+                            "email": email,
                         }
                         check_user(user_data)
                             .then((user) => {
@@ -141,7 +142,7 @@ app.get('/oauth', (req, res) => {
                             })
                             .catch((err) => { throw err; });
                     })
-                    .catch((err) => {console.log(err); throw err; });
+                    .catch((err) => { console.log(err); throw err; });
             })
             .catch((err) => { 
                 res.status(400).send("Error. Error retrieving oauth token.");
