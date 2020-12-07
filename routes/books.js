@@ -202,7 +202,7 @@ router
             });
     }
 })
-.get('/:book_id', (req, res) => {
+.get('/:book_id', checkJwt, (req, res) => {
     
     const accepts = req.accepts(['application/json']);
 
@@ -211,8 +211,12 @@ router
     } else {
         get_book(req.params.book_id)
             .then((book) => {
-                book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
-                res.status(200).send(book);
+                if (book.owner != req.user.sub) {
+                    res.status(403).send({"Error": "Not the owner for this book."});
+                } else {
+                    book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
+                    res.status(200).send(book);    
+                }
             })
             .catch((err) => {
                 console.log(`get /book_id caught: ${err}`);
