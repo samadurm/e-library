@@ -4,11 +4,30 @@ const router = express.Router();
 const ds = require('./../datastore');
 
 const LIBRARIES = 'LIBRARIES';
+const BOOKS = 'BOOKS';
 const server_err = {"Error": "Internal Server Error"};
 const json_accept_err = {"Error": "Must accept JSON format."};
 const json_content_err = {"Error": "Content must be in JSON format."};
 
 router.use(bodyParser.json());
+
+
+function get_book(book_id) {
+    const key = ds.datastore.key([BOOKS, parseInt(book_id, 10)]);
+    
+    return ds.datastore.get(key)
+        .then((entity) => {
+            if (entity === undefined) {
+                console.log("Entity is undefined");
+                throw Error('No book with that id found.');
+            } else {
+                var book = entity[0]; 
+                book.id = key.id;
+                return book;
+            }
+        })
+        .catch((err) => { throw err; });
+}
 
 function is_undefined(data) {
     return data === undefined ? true : false;
@@ -43,11 +62,6 @@ function add_library(name, city, isPublic) {
         })
         .catch((err) => { console.log(`Error caught in add_library: ${err}`); throw err; });
 }
-
-function remove_books_from_library(library) {
-    console.log('Must implement removing books from a library!');
-}
-
 
 function get_library(library_id) {
 
@@ -107,11 +121,93 @@ function edit_library(library, name, city, isPublic) {
         .catch((err) => { console.log(`edit_library caught ${err}`); throw err; });
 }
 
-function delete_library(library_id) {
-    const key = ds.datastore.key([LIBRARIES, parseInt(library_id, 10)]);
+function delete_library(library) {
+    const key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
+
+    library.books.forEach((book_id) => {
+        get_book(book_id)
+            .then((book) => {
+                book.library = null;
+                var book_key = ds.datastore.key([BOOKS, parseInt(book.id, 10)]);  
+                return ds.datastore.save({"key": book_key, "data": book});      
+            })
+            .catch((err) => {
+                console.log(`Caught error in delete_library: ${err}`);
+                throw err;
+            });
+
+    });
+
     return ds.datastore.delete(key)
         .then(() => { return; })
         .catch((err) => { throw err; });
+}
+
+function add_book_to_library(book, library) {
+    book.library = library.id;
+    library.books.push(book.id);
+
+    console.log(JSON.stringify(book));
+    console.log(JSON.stringify(library));
+
+    const lib_key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
+    const book_key = ds.datastore.key([BOOKS, parseInt(book.id, 10)]);
+
+    // remove this id's since they are already internally stored.
+    delete book.id;
+    delete library.id;
+
+    return (
+        ds.datastore.save({"key": lib_key, "data": library})
+            .then(() => {
+                return ds.datastore.save({"key": book_key, "data": book})
+                    .then(() => { return book; })
+                    .catch(() => { 
+                        console.log("add_book_to_library caught error in saving updated book: " + err);
+                        throw err; 
+                    })
+            })
+            .catch((err) => { 
+                console.log("add_book_to_library caught error in saving updated library: " + err);
+                throw err;
+            })
+    );
+}
+
+function remove_book_from_library(book, library) {
+    book.library = null;
+    var updated_books = [];
+
+    library.books.forEach((lib_book) => {
+        if (lib_book !== book.id) {
+            updated_books.push(book.id);
+        } 
+    });
+
+    library.books = updated_books;
+
+    const lib_key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
+    const book_key = ds.datastore.key([BOOKS, parseInt(book.id, 10)]);
+
+    // remove this id's since they are already internally stored.
+    delete book.id;
+    delete library.id;
+
+    return (
+        ds.datastore.save({"key": lib_key, "data": library})
+            .then(() => {
+                return ds.datastore.save({"key": book_key, "data": book})
+                    .then(() => { return book; })
+                    .catch(() => { 
+                        console.log("add_book_to_library caught error in saving updated book: " + err);
+                        throw err; 
+                    })
+            })
+            .catch((err) => { 
+                console.log("add_book_to_library caught error in saving updated library: " + err);
+                throw err;
+            })
+    );
 }
 
 router
@@ -279,8 +375,7 @@ router
 .delete('/:library_id', (req, res) => {
     get_library(req.params.library_id)
         .then((library) => {
-            remove_books_from_library(library);
-            delete_library(req.params.library_id)
+            delete_library(library)
                 .then(() => {
                     res.status(204).end();
                 })
@@ -294,11 +389,59 @@ router
             res.status(404).send({"Error": "No library with this library_id exists."});
         });
 })
-.put('/:library_id/books/:book_id', (req, res) => {
-    res.send("Must implement adding a book to a library!");
+.put('/:library_id/:book_id', (req, res) => {
+    get_book(req.params.book_id)
+        .then((book) => {
+            if (book.library !== null) {
+                res.status(403).send({"Error": "The book is already assigned to a library"});
+            } else {
+                get_library(req.params.library_id)
+                    .then((library) => {
+                        add_book_to_library(book, library)
+                            .then(() => {
+                                res.status(204).end();
+                            })
+                            .catch((err) => {
+                                console.log(`caught error after add_book_to_library: ${err}`);
+                                res.status(500).send(server_err);
+                            });
+                    })
+                    .catch((err) => {
+                        console.log(`got error ${err}`);
+                        res.status(404).send({"Error": "The specified library and/or book does not exist"});
+                    });
+            }
+        })
+        .catch((err) => {
+            res.status(404).send({"Error": "The specified library and/or book does not exist"});
+        });
 })
-.delete('/:library_id/books/:book_id', (req, res) => {
-    res.send("Must implement removing a book from a library.");
+.delete('/:library_id/:book_id', (req, res) => {
+    get_book(req.params.book_id)
+        .then((book) => {
+            if (book.library !== Number(req.params.library_id)) {
+                res.status(403).send({"Error": "The book is not assigned to the given library"});
+            } else {
+                get_library(req.params.library_id)
+                    .then((library) => {
+                        remove_book_from_library(book, library)
+                            .then(() => {
+                                res.status(204).end();
+                            })
+                            .catch((err) => {
+                                console.log(`caught error after remove_book_from_library: ${err}`);
+                                res.status(500).send(server_err);
+                            });
+                    })
+                    .catch((err) => {
+                        console.log(`got error ${err}`);
+                        res.status(404).send({"Error": "The specified library and/or book does not exist"});
+                    });
+                }
+            })
+        .catch((err) => {
+            res.status(404).send({"Error": "The specified library and/or book does not exist"});
+        });
 });
 
 module.exports = router;
