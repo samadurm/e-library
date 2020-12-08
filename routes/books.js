@@ -333,11 +333,11 @@ router
             });
     }
 })
-.delete('/:book_id', (req, res) => {
+.delete('/:book_id', checkJwt, (req, res) => {
     get_book(req.params.book_id)
         .then((book) => {
-            if (book.owner !== null) {
-                res.status(403).send({"Error": "Cannot delete book as it is rented by a user. Remove the book from the user first."})
+            if (book.owner !== req.user.sub) {
+                res.status(403).send(not_owned_error)
             } else {
                 if (book.library !== null) {
                     get_library(book.library)
