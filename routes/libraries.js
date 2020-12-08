@@ -436,7 +436,7 @@ router
                 })
                 .catch((err) => {
                     console.log(`got error ${err}`);
-                    res.status(404).send({"Error": "No book exists with this book_id at the library with this library_id"});
+                    res.status(404).send({"Error": "The specified library and/or book does not exist"});
                 });
             })
         .catch((err) => {
