@@ -23,3 +23,8 @@ html {
     top: 30%;
     left: 20%;
 }
+
+#jwt{
+    width: 50%;
+    right: 20%;
+}

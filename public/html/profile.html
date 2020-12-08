@@ -7,7 +7,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title></title>
+        <title>Profile</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="main.css">
@@ -18,12 +18,15 @@
         <![endif]-->
         <div class="center-col"> 
             <div class="center">
-                <h1>
-                    Welcome to e-Library <%= firstName =%>.
-                </h1>
-                <p>Profile Info: </p>
-                <p>Name: <%= firstName =%> <%= lastName =%> </p>
-                <p>JWT Token: <%= JWT =%></p>
+                <h1>Welcome to eLibrary <%= first_name %>!</h1>
+                <p>Profile info:</p>
+                <ul>
+                    <li>user id: <%= unique_id %></li>
+                    <li>Name: <%= first_name %> <%= last_name %></li>
+                    <li>email: <%= email %></li>
+                </ul>
+                <p>JWT:</p>
+               <div id="jwt"> <%= jwt %> </div>
             </div>
         </div>
         <script src="" async defer></script>

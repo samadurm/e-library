@@ -4,6 +4,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const ds = require('./datastore');
+const router = express.Router();
 
 const jwt_decode = require('jwt-decode');
 
@@ -22,8 +23,8 @@ var jwt_token = null;
 
 const method_not_allowed = {"Error": "Method not allowed"};
 
-// const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
-const app_url = 'http://localhost:8080/';
+const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
+// const app_url = 'http://localhost:8080/';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
@@ -135,7 +136,7 @@ app.get('/oauth', (req, res) => {
                         }
                         check_user(user_data)
                             .then(() => {
-                                res.redirect("/profile?unique_id=" + sub + "&first_name=" + first_name + "&last_name=" + last_name + "&state=" + session.state);
+                                res.redirect("/profile?unique_id=" + sub + "&first_name=" + first_name + "&last_name=" + last_name + "&email=" + email + "&state=" + session.state);
                             })
                             .catch((err) => { throw err; });
                     })
@@ -146,17 +147,15 @@ app.get('/oauth', (req, res) => {
             });
     }   
 })
-app.get("/profile", (req, res) => {
+router.get("/", (req, res) => {
     const first_name = req.query.first_name;
     const last_name = req.query.last_name;
     const unique_id = req.query.unique_id;
+    const email = req.query.email;
     // uses ejs html engine to set the parameters of the html file
     const profile_path = path.join(__dirname, "public/html", "profile.html");
 
-    res.send(`Unique id: ${unique_id} Name: ${first_name} ${last_name} JWT ${jwt_token}`);
-    // res.render(
-    //     profile_path, 
-    // );
+    res.render(path.join(__dirname, 'public/html', 'profile.html'), {first_name: first_name, last_name: last_name, email: email, unique_id: unique_id, jwt: jwt_token});
 });
 
 usersRoute.get('/', (req, res) => {
@@ -196,7 +195,7 @@ usersRoute.get('/', (req, res) => {
 
 
 
-
+app.use('/profile', router);
 app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
