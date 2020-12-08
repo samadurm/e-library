@@ -12,14 +12,16 @@ const datastore = ds.datastore;
 const fs = require('fs');
 var app = express();
 var usersRoute = express();
+
+app.enable("trust proxy");
 app.engine('html', require('ejs').renderFile);
 
 var client_id = null;
 var client_secret = null;
 var jwt_token = null;
 
-// const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
-const app_url = 'http://localhost:8080/';
+const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
+// const app_url = 'http://localhost:8080/';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
