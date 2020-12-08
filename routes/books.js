@@ -11,6 +11,8 @@ const LIBRARIES = 'LIBRARIES';
 const server_err = {"Error": "Internal Server Error"};
 const json_accept_err = {"Error": "Must accept JSON format."};
 const json_content_err = {"Error": "Content must be in JSON format."};
+const not_owned_error = {"Error":  "Not the owner for this book."}
+
 
 router.use(bodyParser.json());
 
@@ -242,7 +244,7 @@ router
             });
     }
 })
-.patch('/:book_id', (req, res) => {
+.patch('/:book_id', checkJwt, (req, res) => {
     const err_msg = {"Error":  "The request object is either missing either all of the attributes or contains an invalid attribute."};
     
     res.set("Content", "application/json");
@@ -277,7 +279,10 @@ router
         } else {
             get_book(req.params.book_id)
                 .then((book) => {
-                    edit_book(book, req.body.title, req.body.author, req.body.genre)
+                    if (book.owner !== req.user.sub) {
+                        res.status(403).send(not_owned_error);
+                    } else {
+                        edit_book(book, req.body.title, req.body.author, req.body.genre)
                         .then((updated) => {
                             updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
                             res.status(200).send(updated);
@@ -285,6 +290,7 @@ router
                         .catch((err) => {
                             res.status(500).send(server_err);
                         });
+                    }
                 })
                 .catch((err) => {
                     console.log(`${err}`);
@@ -293,7 +299,7 @@ router
         }
     }
 })
-.put('/:book_id', (req, res) => {
+.put('/:book_id', checkJwt, (req, res) => {
     const err_msg = {"Error": "The request object is either missing an attribute or contains an invalid attribute."};
     
     res.set("Content", "application/json");
@@ -308,14 +314,18 @@ router
     } else {
         get_book(req.params.book_id)
             .then((book) => {
-                edit_book(book, req.body.title, req.body.author, req.body.genre)
-                    .then((updated) => {
-                        updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
-                        res.status(200).send(updated);
-                    })
-                    .catch((err) => {
-                        res.status(500).send(server_err);
-                    });
+                if (book.owner !== req.user.sub) {
+                    res.status(403).send(not_owned_error);
+                } else {
+                    edit_book(book, req.body.title, req.body.author, req.body.genre)
+                        .then((updated) => {
+                            updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
+                            res.status(200).send(updated);
+                        })
+                        .catch((err) => {
+                            res.status(500).send(server_err);
+                        });
+                    }
             })
             .catch((err) => {
                 console.log(`${err}`);
