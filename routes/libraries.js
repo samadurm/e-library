@@ -8,6 +8,7 @@ const BOOKS = 'BOOKS';
 const server_err = {"Error": "Internal Server Error"};
 const json_accept_err = {"Error": "Must accept JSON format."};
 const json_content_err = {"Error": "Content must be in JSON format."};
+const method_not_allowed = {"Error": "Method not allowed"};
 
 router.use(bodyParser.json());
 
@@ -442,6 +443,17 @@ router
         .catch((err) => {
             res.status(404).send({"Error": "No book exists with this book_id at the library with this library_id."});
         });
+})
+
+//unsupported methods
+.put('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.patch('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.delete('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
 });
 
 module.exports = router;

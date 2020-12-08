@@ -20,8 +20,10 @@ var client_id = null;
 var client_secret = null;
 var jwt_token = null;
 
-const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
-// const app_url = 'http://localhost:8080/';
+const method_not_allowed = {"Error": "Method not allowed"};
+
+// const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
+const app_url = 'http://localhost:8080/';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
@@ -176,6 +178,24 @@ usersRoute.get('/', (req, res) => {
         });
     }
 })
+.get('/:user_id', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.post('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.put('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.patch('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.delete('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+
+
+
 
 app.use('/users', usersRoute);
 

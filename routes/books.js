@@ -12,6 +12,7 @@ const server_err = {"Error": "Internal Server Error"};
 const json_accept_err = {"Error": "Must accept JSON format."};
 const json_content_err = {"Error": "Content must be in JSON format."};
 const not_owned_error = {"Error":  "Not the owner for this book."}
+const method_not_allowed = {"Error": "Method not allowed"};
 
 
 router.use(bodyParser.json());
@@ -365,8 +366,22 @@ router
         });
 })
 
+//unsupported methods
+.put('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.patch('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+})
+.delete('/', (req, res) => {
+    res.status(405).send(method_not_allowed);
+});
+
+
+
 // Error catching function
 router.use(function (err, req, res, next) {
+    console.log(err.name);
     if (err.name === 'UnauthorizedError') {
         res.status(401).send({'Error' : 'Must provide a valid JWT token.'});
     } else {
