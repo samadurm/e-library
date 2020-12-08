@@ -112,7 +112,7 @@ app.get('/oauth', (req, res) => {
         };
         axios.post('https://www.googleapis.com/oauth2/v4/token', data) 
             .then((entity) => { 
-               var url = 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses';
+                var url = 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses';
 
                 url += '&access_token=' + entity.data.access_token;
                 jwt_token = entity.data.id_token;

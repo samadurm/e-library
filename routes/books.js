@@ -5,24 +5,26 @@ const ds = require('./../datastore');
 const jwt = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 
+
 const BOOKS = 'BOOKS';
 const LIBRARIES = 'LIBRARIES';
 const server_err = {"Error": "Internal Server Error"};
 const json_accept_err = {"Error": "Must accept JSON format."};
 const json_content_err = {"Error": "Content must be in JSON format."};
+const not_owned_error = {"Error":  "Not the owner for this book."}
+
 
 router.use(bodyParser.json());
 
-const PROJECT = 'samadurm-elibrary';
 const checkJwt = jwt({
     secret: jwksRsa.expressJwtSecret({
             cache: true,
             rateLimit: true,
             jwksRequestsPerMinute: 5,
-            jwksUri: `https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com`
+            jwksUri: `https://www.googleapis.com/oauth2/v3/certs`
         }),
         // Validate the audience and the issuer.
-        issuer: `https://securetoken.google.com/${PROJECT}`,
+        issuer: `https://accounts.google.com`,
         algorithms: ['RS256']
 });
 
@@ -91,21 +93,21 @@ function remove_book_from_library(book, library) {
     );
 }
 
-function add_book(title, author, genre) {
+function add_book(title, author, genre, sub) {
     var key = ds.datastore.key(BOOKS);
-    
+
     const book = {
         "title": title, 
         "author": author,
         "genre": genre,
         "library": null,
-        "owner": null
+        "owner": sub
     };
 
     return ds.datastore.save({"key": key, "data": book})
         .then(() => {
             book.id = key.id;
-            return book;
+            return book;            
         })
         .catch((err) => { console.log(`Error in add_book: ${err}`); throw err; });
 }
@@ -127,8 +129,8 @@ function get_book(book_id) {
         .catch((err) => { throw err; });
 }
 
-function get_books(req) {
-    var q = ds.datastore.createQuery(BOOKS).limit(5);
+function get_books(req, sub) {
+    var q = ds.datastore.createQuery(BOOKS).limit(5).filter('owner', '=', sub);
 
     if (Object.keys(req.query).includes("cursor")) {
         q = q.start(req.query.cursor);
@@ -177,7 +179,7 @@ function delete_book(book) {
 }
 
 router
-.post('/', (req, res) => {
+.post('/', checkJwt, (req, res) => {
     const err_response = {"Error": "The request object is missing at least one of the required attributes, or one of the attributes is invalid."};
     const accepts = req.accepts(['application/json']);
     res.set("Content", "application/json");
@@ -191,7 +193,7 @@ router
     } else if (!is_valid_string(req.body.title, 255) || !is_valid_string(req.body.author, 255) || !is_valid_string(req.body.genre, 255)) {
         res.status(400).send(err_response);
     } else {
-        add_book(req.body.title, req.body.author, req.body.genre)
+        add_book(req.body.title, req.body.author, req.body.genre, req.user.sub)
             .then((book) => {
                 book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
                 res.status(201).send(book);
@@ -202,7 +204,7 @@ router
             });
     }
 })
-.get('/:book_id', (req, res) => {
+.get('/:book_id', checkJwt, (req, res) => {
     
     const accepts = req.accepts(['application/json']);
 
@@ -211,8 +213,12 @@ router
     } else {
         get_book(req.params.book_id)
             .then((book) => {
-                book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
-                res.status(200).send(book);
+                if (book.owner != req.user.sub) {
+                    res.status(403).send({"Error": "Not the owner for this book."});
+                } else {
+                    book.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;   
+                    res.status(200).send(book);    
+                }
             })
             .catch((err) => {
                 console.log(`get /book_id caught: ${err}`);
@@ -220,13 +226,13 @@ router
             });
     }
 })
-.get('/', (req, res) => {
+.get('/', checkJwt, (req, res) => {
     const accepts = req.accepts(['application/json']);
 
     if (!accepts) {
         res.status(406).send(json_accept_err);
     } else {
-        get_books(req)
+        get_books(req, req.user.sub)
             .then((entities) => {
                 entities.books.forEach((book) => {
                     book.self = req.protocol + '://' + req.get('Host') + '/libraries/' + book.id;
@@ -238,7 +244,7 @@ router
             });
     }
 })
-.patch('/:book_id', (req, res) => {
+.patch('/:book_id', checkJwt, (req, res) => {
     const err_msg = {"Error":  "The request object is either missing either all of the attributes or contains an invalid attribute."};
     
     res.set("Content", "application/json");
@@ -273,7 +279,10 @@ router
         } else {
             get_book(req.params.book_id)
                 .then((book) => {
-                    edit_book(book, req.body.title, req.body.author, req.body.genre)
+                    if (book.owner !== req.user.sub) {
+                        res.status(403).send(not_owned_error);
+                    } else {
+                        edit_book(book, req.body.title, req.body.author, req.body.genre)
                         .then((updated) => {
                             updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
                             res.status(200).send(updated);
@@ -281,6 +290,7 @@ router
                         .catch((err) => {
                             res.status(500).send(server_err);
                         });
+                    }
                 })
                 .catch((err) => {
                     console.log(`${err}`);
@@ -289,7 +299,7 @@ router
         }
     }
 })
-.put('/:book_id', (req, res) => {
+.put('/:book_id', checkJwt, (req, res) => {
     const err_msg = {"Error": "The request object is either missing an attribute or contains an invalid attribute."};
     
     res.set("Content", "application/json");
@@ -304,14 +314,18 @@ router
     } else {
         get_book(req.params.book_id)
             .then((book) => {
-                edit_book(book, req.body.title, req.body.author, req.body.genre)
-                    .then((updated) => {
-                        updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
-                        res.status(200).send(updated);
-                    })
-                    .catch((err) => {
-                        res.status(500).send(server_err);
-                    });
+                if (book.owner !== req.user.sub) {
+                    res.status(403).send(not_owned_error);
+                } else {
+                    edit_book(book, req.body.title, req.body.author, req.body.genre)
+                        .then((updated) => {
+                            updated.self = req.protocol + '://' + req.get('Host') + '/books/' + book.id;
+                            res.status(200).send(updated);
+                        })
+                        .catch((err) => {
+                            res.status(500).send(server_err);
+                        });
+                    }
             })
             .catch((err) => {
                 console.log(`${err}`);
@@ -319,11 +333,11 @@ router
             });
     }
 })
-.delete('/:book_id', (req, res) => {
+.delete('/:book_id', checkJwt, (req, res) => {
     get_book(req.params.book_id)
         .then((book) => {
-            if (book.owner !== null) {
-                res.status(403).send({"Error": "Cannot delete book as it is rented by a user. Remove the book from the user first."})
+            if (book.owner !== req.user.sub) {
+                res.status(403).send(not_owned_error)
             } else {
                 if (book.library !== null) {
                     get_library(book.library)
