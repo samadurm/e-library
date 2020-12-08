@@ -56,7 +56,6 @@ function get_users() {
 }
 
 function add_user(user_data) {
-    user_data.books = [];
     var key = datastore.key(USERS);
 
     return datastore.save({"key": key, "data": user_data})

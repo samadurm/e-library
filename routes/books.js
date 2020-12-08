@@ -365,4 +365,13 @@ router
         });
 })
 
+// Error catching function
+router.use(function (err, req, res, next) {
+    if (err.name === 'UnauthorizedError') {
+        res.status(401).send({'Error' : 'Must provide a valid JWT token.'});
+    } else {
+        res.status(500).send({'Error': 'Internal Server error!'})
+    }
+  })
+
 module.exports = router;
