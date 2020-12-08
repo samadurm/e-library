@@ -82,7 +82,7 @@ function get_library(library_id) {
 
 function get_libraries(req) {
     var q = ds.datastore.createQuery(LIBRARIES).limit(5);
-
+    console.log(Object.keys(req.query));
     if (Object.keys(req.query).includes("cursor")) {
         q = q.start(req.query.cursor);
     }
@@ -392,11 +392,11 @@ router
 .put('/:library_id/:book_id', (req, res) => {
     get_book(req.params.book_id)
         .then((book) => {
-            if (book.library !== null) {
-                res.status(403).send({"Error": "The book is already assigned to a library"});
-            } else {
-                get_library(req.params.library_id)
-                    .then((library) => {
+            get_library(req.params.library_id)
+                .then((library) => {
+                    if (book.library !== null) {
+                        res.status(403).send({"Error": "The book is already assigned to a library"});
+                    } else {
                         add_book_to_library(book, library)
                             .then(() => {
                                 res.status(204).end();
@@ -405,12 +405,12 @@ router
                                 console.log(`caught error after add_book_to_library: ${err}`);
                                 res.status(500).send(server_err);
                             });
-                    })
-                    .catch((err) => {
-                        console.log(`got error ${err}`);
-                        res.status(404).send({"Error": "The specified library and/or book does not exist"});
-                    });
-            }
+                        }
+                })
+                .catch((err) => {
+                    console.log(`got error ${err}`);
+                    res.status(404).send({"Error": "The specified library and/or book does not exist"});
+                });
         })
         .catch((err) => {
             res.status(404).send({"Error": "The specified library and/or book does not exist"});
@@ -419,11 +419,11 @@ router
 .delete('/:library_id/:book_id', (req, res) => {
     get_book(req.params.book_id)
         .then((book) => {
-            if (book.library !== Number(req.params.library_id)) {
-                res.status(403).send({"Error": "The book is not assigned to the given library"});
-            } else {
-                get_library(req.params.library_id)
-                    .then((library) => {
+            get_library(req.params.library_id)
+                .then((library) => {
+                    if (book.library !== Number(req.params.library_id)) {
+                        res.status(403).send({"Error": "The book is not assigned to the given library"});
+                    } else {
                         remove_book_from_library(book, library)
                             .then(() => {
                                 res.status(204).end();
@@ -432,12 +432,12 @@ router
                                 console.log(`caught error after remove_book_from_library: ${err}`);
                                 res.status(500).send(server_err);
                             });
-                    })
-                    .catch((err) => {
-                        console.log(`got error ${err}`);
-                        res.status(404).send({"Error": "The specified library and/or book does not exist"});
-                    });
-                }
+                    }
+                })
+                .catch((err) => {
+                    console.log(`got error ${err}`);
+                    res.status(404).send({"Error": "No book exists with this book_id at the library with this library_id"});
+                });
             })
         .catch((err) => {
             res.status(404).send({"Error": "The specified library and/or book does not exist"});
