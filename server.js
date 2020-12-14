@@ -23,8 +23,7 @@ var jwt_token = null;
 
 const method_not_allowed = {"Error": "Method not allowed"};
 
-const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
-// const app_url = 'http://localhost:8080/';
+const app_url = '';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
@@ -40,7 +39,7 @@ const secret_file = 'client_secret.json';
 
 fs.readFile(secret_file, 'utf8', (err, data) => {
     if (err) {
-        console.log('Read error from file: ' + err);
+        throw Error('Read error from client_secret.json');
     } else {
         const secretFile = JSON.parse(data);
         client_id = secretFile.web.client_id;
@@ -57,7 +56,7 @@ function get_users() {
             // return results;
             return entities[0].map(ds.fromDatastore);
         })
-        .catch((err) => { console.log(`Error caught is get_users: ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function add_user(user_data) {
@@ -65,7 +64,7 @@ function add_user(user_data) {
 
     return datastore.save({"key": key, "data": user_data})
         .then(() => { return key; })
-        .catch((err) => { console.log(err); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function check_user(user_data) {
@@ -81,10 +80,10 @@ function check_user(user_data) {
             // if we got here then the user was not found in the database
             // so add the user
             add_user(user_data)
-                .then(() => { console.log('New user added.'); return; })
-                .catch((err) => { console.log(err); throw err; })
+                .then(() => { return; })
+                .catch((err) => { throw err; })
         })
-        .catch((err) => { console.log('get_user caught error ' + err); throw err; });
+        .catch((err) => { throw err; });
 }
 
 app.use(express.static('public'));
@@ -140,7 +139,7 @@ app.get('/oauth', (req, res) => {
                             })
                             .catch((err) => { throw err; });
                     })
-                    .catch((err) => { console.log(err); throw err; });
+                    .catch((err) => { throw err; });
             })
             .catch((err) => { 
                 res.status(400).send("Error. Error retrieving oauth token.");
@@ -172,7 +171,6 @@ usersRoute.get('/', (req, res) => {
             res.status(200).send(entities);
         })
         .catch((err) => {
-            console.log(`Caught error in get users route: ${err}`);
             res.status(500).send({"Error": "Internal Server Error."})
         });
     }
@@ -200,5 +198,9 @@ app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-    console.log(`Server listening on ${PORT}...`);
+    if (app_url.length === 0) {
+        console.log('Must add url that service is deployed to using variable app_url in server.js');
+    } else {
+        console.log(`Server listening on ${PORT}...`);
+    }
 });

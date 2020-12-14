@@ -47,7 +47,6 @@ function get_library(library_id) {
     return ds.datastore.get(key)
         .then((entity) => {
             if (entity === undefined) {
-                console.log("Entity is undefined");
                 throw Error('No library with that id found.');
             } else {
                 var library = entity[0]; 
@@ -83,14 +82,10 @@ function remove_book_from_library(book, library) {
                 return ds.datastore.save({"key": book_key, "data": book})
                     .then(() => { return book; })
                     .catch(() => { 
-                        console.log("add_book_to_library caught error in saving updated book: " + err);
                         throw err; 
                     })
             })
-            .catch((err) => { 
-                console.log("add_book_to_library caught error in saving updated library: " + err);
-                throw err;
-            })
+            .catch((err) => { throw err; })
     );
 }
 
@@ -110,7 +105,7 @@ function add_book(title, author, genre, sub) {
             book.id = key.id;
             return book;            
         })
-        .catch((err) => { console.log(`Error in add_book: ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function get_book(book_id) {
@@ -119,7 +114,6 @@ function get_book(book_id) {
     return ds.datastore.get(key)
         .then((entity) => {
             if (entity === undefined) {
-                console.log("Entity is undefined");
                 throw Error('No book with that id found.');
             } else {
                 var book = entity[0]; 
@@ -146,7 +140,7 @@ function get_books(req, sub) {
             }
             return results;
         })
-        .catch((err) => { console.log(`Caught error in get_books: ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function edit_book(book, title, author, genre) {
@@ -169,7 +163,7 @@ function edit_book(book, title, author, genre) {
             book.id = key.id;
             return book;
         }) 
-        .catch((err) => { console.log(`edit_book caught ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function delete_book(book) {
@@ -200,7 +194,6 @@ router
                 res.status(201).send(book);
             })
             .catch((err) => {
-                console.log(`add_book caught ${err}`);
                 res.status(500).send(server_err)
             });
     }
@@ -222,7 +215,6 @@ router
                 }
             })
             .catch((err) => {
-                console.log(`get /book_id caught: ${err}`);
                 res.status(404).send({"Error": "No book with this book_id exists"});
             });
     }
@@ -294,7 +286,6 @@ router
                     }
                 })
                 .catch((err) => {
-                    console.log(`${err}`);
                     res.status(404).send({"Error": "No book with this book_id exists"});
                 });
         }
@@ -329,7 +320,6 @@ router
                     }
             })
             .catch((err) => {
-                console.log(`${err}`);
                 res.status(404).send({"Error": "No book with this book_id exists"});
             });
     }
@@ -345,23 +335,16 @@ router
                         .then((library) => {
                             remove_book_from_library(book, library).catch((err) => { throw err; })
                         })
-                        .catch((err) => {
-                            console.log(`caught error ${err}`);
-                            throw err;
-                        });
+                        .catch((err) => { throw err; });
                 }
                 delete_book(book)
                     .then(() => {
                         res.status(204).end();
                     })
-                    .catch((err) => {
-                        console.log(`Error from delete_book: ${err}`);
-                        throw err;
-                    });
+                    .catch((err) => { throw err; });
             }
         })
         .catch((err) => {
-            console.log(`Couldnt find book ${err}`);
             res.status(404).send({"Error": "No book with this book_id exists"})
         });
 })
@@ -381,7 +364,6 @@ router
 
 // Error catching function
 router.use(function (err, req, res, next) {
-    console.log(err.name);
     if (err.name === 'UnauthorizedError') {
         res.status(401).send({'Error' : 'Must provide a valid JWT token.'});
     } else {
