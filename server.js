@@ -23,8 +23,7 @@ var jwt_token = null;
 
 const method_not_allowed = {"Error": "Method not allowed"};
 
-const app_url = 'https://samadurm-elibrary.wl.r.appspot.com/';
-// const app_url = 'http://localhost:8080/';
+const app_url = '';
 
 const auth_url = 'https://accounts.google.com/o/oauth2/v2/auth';
 const redirect_uri = app_url + 'oauth';
@@ -199,5 +198,9 @@ app.use('/users', usersRoute);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-    console.log(`Server listening on ${PORT}...`);
+    if (app_url.length === 0) {
+        console.log('Must add url that service is deployed to using variable app_url in server.js');
+    } else {
+        console.log(`Server listening on ${PORT}...`);
+    }
 });
