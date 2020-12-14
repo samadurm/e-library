@@ -19,7 +19,6 @@ function get_book(book_id) {
     return ds.datastore.get(key)
         .then((entity) => {
             if (entity === undefined) {
-                console.log("Entity is undefined");
                 throw Error('No book with that id found.');
             } else {
                 var book = entity[0]; 
@@ -61,7 +60,7 @@ function add_library(name, city, isPublic) {
             library.id = key.id;
             return library;
         })
-        .catch((err) => { console.log(`Error caught in add_library: ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function get_library(library_id) {
@@ -70,7 +69,6 @@ function get_library(library_id) {
     return ds.datastore.get(key)
         .then((entity) => {
             if (entity === undefined) {
-                console.log("Entity is undefined");
                 throw Error('No library with that id found.');
             } else {
                 var library = entity[0]; 
@@ -83,7 +81,7 @@ function get_library(library_id) {
 
 function get_libraries(req) {
     var q = ds.datastore.createQuery(LIBRARIES).limit(5);
-    console.log(Object.keys(req.query));
+
     if (Object.keys(req.query).includes("cursor")) {
         q = q.start(req.query.cursor);
     }
@@ -97,7 +95,7 @@ function get_libraries(req) {
             }
             return results;
         })
-        .catch((err) => { console.log(`Caught error in get_libraries: ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function edit_library(library, name, city, isPublic) {
@@ -119,7 +117,7 @@ function edit_library(library, name, city, isPublic) {
             library.id = key.id;
             return library;
         })
-        .catch((err) => { console.log(`edit_library caught ${err}`); throw err; });
+        .catch((err) => { throw err; });
 }
 
 function delete_library(library) {
@@ -133,7 +131,6 @@ function delete_library(library) {
                 return ds.datastore.save({"key": book_key, "data": book});      
             })
             .catch((err) => {
-                console.log(`Caught error in delete_library: ${err}`);
                 throw err;
             });
 
@@ -148,9 +145,6 @@ function add_book_to_library(book, library) {
     book.library = library.id;
     library.books.push(book.id);
 
-    console.log(JSON.stringify(book));
-    console.log(JSON.stringify(library));
-
     const lib_key = ds.datastore.key([LIBRARIES, parseInt(library.id, 10)]);
     const book_key = ds.datastore.key([BOOKS, parseInt(book.id, 10)]);
 
@@ -163,15 +157,9 @@ function add_book_to_library(book, library) {
             .then(() => {
                 return ds.datastore.save({"key": book_key, "data": book})
                     .then(() => { return book; })
-                    .catch(() => { 
-                        console.log("add_book_to_library caught error in saving updated book: " + err);
-                        throw err; 
-                    })
+                    .catch(() => { throw err; })
             })
-            .catch((err) => { 
-                console.log("add_book_to_library caught error in saving updated library: " + err);
-                throw err;
-            })
+            .catch((err) => { throw err; })
     );
 }
 
@@ -200,12 +188,10 @@ function remove_book_from_library(book, library) {
                 return ds.datastore.save({"key": book_key, "data": book})
                     .then(() => { return book; })
                     .catch(() => { 
-                        console.log("add_book_to_library caught error in saving updated book: " + err);
                         throw err; 
                     })
             })
             .catch((err) => { 
-                console.log("add_book_to_library caught error in saving updated library: " + err);
                 throw err;
             })
     );
@@ -232,7 +218,6 @@ router
                 res.status(201).send(library);
             })
             .catch((err) => {
-                console.log(`Error from add_library ${err}`);
                 res.status(500).send(server_err);
             });
     }
@@ -251,7 +236,6 @@ router
             res.status(200).send(entities);
         })
         .catch((err) => { 
-            console.log(`get /libraries caught ${err}`); 
             res.status(500).send(server_err);
         });
     }
@@ -314,12 +298,10 @@ router
                             res.status(200).send(updated);
                         })
                         .catch((err) => { 
-                            console.log(err); 
                             res.status(500).send(server_err);
                         });
                 })
                 .catch((err) => {
-                    console.log(`Library not found: ${err}`);
                     res.status(404).send({"Error": "No library with this library_id exists"});
                 });
         }
@@ -362,12 +344,10 @@ router
                             res.status(200).send(updated);
                         })
                         .catch((err) => { 
-                            console.log(err); 
                             res.status(500).send(server_err);
                         });
                 })
                 .catch((err) => {
-                    console.log(`Library not found: ${err}`);
                     res.status(404).send({"Error": "No library with this library_id exists."});
                 });
         }
@@ -381,12 +361,10 @@ router
                     res.status(204).end();
                 })
                 .catch((err) => {
-                    console.log(`delete_library caught ${err}`);
                     res.status(500).send(server_err);
                 })
         })
         .catch((err) => { 
-            console.log(err); 
             res.status(404).send({"Error": "No library with this library_id exists."});
         });
 })
@@ -403,13 +381,11 @@ router
                                 res.status(204).end();
                             })
                             .catch((err) => {
-                                console.log(`caught error after add_book_to_library: ${err}`);
                                 res.status(500).send(server_err);
                             });
                         }
                 })
                 .catch((err) => {
-                    console.log(`got error ${err}`);
                     res.status(404).send({"Error": "The specified library and/or book does not exist"});
                 });
         })
@@ -430,13 +406,11 @@ router
                                 res.status(204).end();
                             })
                             .catch((err) => {
-                                console.log(`caught error after remove_book_from_library: ${err}`);
                                 res.status(500).send(server_err);
                             });
                     }
                 })
                 .catch((err) => {
-                    console.log(`got error ${err}`);
                     res.status(404).send({"Error": "No book exists with this book_id at the library with this library_id."});
                 });
             })
